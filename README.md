@@ -2,7 +2,7 @@
 ## Fall 2019
 ## Project 1: A "data story" on the songs of our times
 
-<img src="figs/Title1.jpeg" width="500">
+<img src="figs/Title1.jpeg" width="300">
 
 ### [Project Description](doc/)
 This project utlises text-analysis techniques such as cosine similarity and sentiment analysis to compare Jazz, Rock, and Hip-Hop lyrics to one another. 
