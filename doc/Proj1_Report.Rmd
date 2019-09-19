@@ -202,7 +202,7 @@ wordcloud(hiphop.tdm$term, hiphop.tdm$count,
 
 ## Cosine similarity as a measure of statistical association
 
-Cosine similarity measures the angular separation of two data vectors measured from zero and it therefore can be used to evaluate the similarity between two vectors. In this case, it is used to compare Jazz and Rock; Rock and Hip-Hop and finally Jazz and Hip-Hop.
+Cosine similarity measures the angular separation of two data vectors measured from zero and it therefore can be used to evaluate the similarity between two vectors. In this case, it is used to compare Jazz and Rock; Rock and Hip-Hop and finally Jazz and Hip-Hop. Alternative measuers of correlation could include the Binary Dice coefficient or the Binary Jaccard coefficient. These three methods are methodologically different but they usually provide very similar results. A more in-depth analysis of these approaches is beyond the scope of the project.
 
 Jazz and Rock emerge to be closer to one another than Rock to Hip-Hop. This might somehow justify Rock fans to feel deprecate Hip-Hop even if they were similarly criticised in the 1960's. Lastly, Jazz and Hip-Hop are the furthest apart.
 
