@@ -1,0 +1,240 @@
+---
+title: "Generational clashes: Jazz vs Rock vs Hip-Hop"
+author: 'Stefano Longo - UNI: sl4444'
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r, include= F, warning=F}
+setwd("/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/doc")
+library(tm)
+library(data.table)
+library(tidytext)
+library(tidyverse)
+library(DT)
+library(dplyr)
+```
+
+![](/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/figs/Title1.jpeg)
+
+
+As time goes one, each generation condemens the next generation's taste in music. Frequent critiques not only revolve around the musical component of new genres but they also target the kind of values associated with them. For example, as Rock rose to popularity in the 50's, older generations that grew up listening to Jazz, or even Opera, found the new style disgraceful. Few decades later, in the 90's and early 00's, the same people that grew up with Rock started describing Hip-Hop in a similar way. The generation clash is well-known but are the differences across genres as pronounced as they seem? The main point of this report is to try understand if Rock was as far from Jazz as Hip-Hop was from Rock. 
+
+
+```{r, eval=F, echo=F}
+#This is the data cleaning process. The resulting data has been saved in the output folder to avoid running this code each time. 
+
+
+#Loading data and filtering songs in the Jazz, Rock and Hip-Hope genres as these are the ones this project is focusing on.
+#Also selcting a random sample of 30% the original in size in order to make the whole process quicker. This was suggested on Piazza.
+load("/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/data/lyrics.RData")
+
+dt <- dt_lyrics %>%
+  filter(genre %in% c("Jazz", "Rock", "Hip-Hop")) # %>%
+  #sample_frac(0.3)
+
+#Create additional function for white spaces as shown in class
+leadingWhitespace <- content_transformer(function(x) str_trim(x, side = "both"))
+
+#Add extra stop words. I purposefully decided to keep "fuck" and "nigga" from the ones used in the lecture, because I think they are extremely relevant components of Hip-Hop music
+
+add_words <- c("lot", "today", "months", "month", "wanna", "wouldnt", "wasnt", "ha", "na", "ooh", "da", "gonna", "im", "dont", "aint",
+          "wont", "yeah", "la", "oi", "hey", "year", "years", "last", "past", "feel")
+
+tot_words <- c(stop_words$word, add_words)
+
+# Corpus creation and initial cleaning
+corpus <- VCorpus(VectorSource(dt$lyrics)) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(removeWords, character(0)) %>%
+  tm_map(removeWords, tot_words) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(leadingWhitespace)
+
+#Word stemming
+stemmed <- tm_map(corpus, stemDocument) %>%
+  tidy() %>%
+  dplyr::select(text)
+
+#Create dictionary and use it for stem completion
+dict <- tidy(corpus) %>%
+  dplyr::select(text) %>%
+  unnest_tokens(dictionary, text)
+
+completed <- stemmed %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(stems, text) %>%
+  bind_cols(dict)
+
+completed <- completed %>%
+  group_by(stems) %>%
+  count(dictionary) %>%
+  mutate(word = dictionary[which.max(n)]) %>%
+  ungroup() %>%
+  dplyr::select(stems, word) %>%
+  distinct() %>%
+  right_join(completed) %>%
+  dplyr::select(-stems) %>%
+  group_by(id) %>%
+  summarise(stemmedwords= str_c(word, collapse = " ")) %>%
+  ungroup()
+
+#Merge clean lyrics into dataset
+clean_lyrics <- dt %>%
+  mutate(id = row_number()) %>%
+  inner_join(completed)
+
+#Save
+save(clean_lyrics, file="/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/output/clean_lyrics.RData")
+```
+
+```{r}
+#Load data and create a Document-Term matrix for each genre
+
+load("/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/output/clean_lyrics.RData")
+
+
+jazz.words <- paste(unlist(clean_lyrics$stemmedwords[clean_lyrics$genre=="Jazz"]), collapse ="")
+jazz.tdm <- tidy(TermDocumentMatrix(VCorpus(VectorSource(jazz.words)))) %>%
+  mutate(genre = "jazz") %>%
+  dplyr::select(-document)
+
+
+#Repeat the same process for Rock
+rock.words <- paste(unlist(clean_lyrics$stemmedwords[clean_lyrics$genre=="Rock"]), collapse ="")
+rock.tdm <- tidy(TermDocumentMatrix(VCorpus(VectorSource(rock.words)))) %>%
+  mutate(genre = "rock") %>%
+  dplyr::select(-document)
+
+#Repeat the same process for Hip-Hop
+hiphop.words <- paste(unlist(clean_lyrics$stemmedwords[clean_lyrics$genre=="Hip-Hop"]), collapse ="")
+hiphop.tdm <- tidy(TermDocumentMatrix(VCorpus(VectorSource(hiphop.words)))) %>%
+  mutate(genre = "hiphop") %>%
+  dplyr::select(-document)
+```
+
+
+## Starting from the basics: vocabulary range.
+
+Under a musical point of view, newer genres are usually considered "inferior" and less sophisticated. However, HipHop artists, arguably due to the genre's focus on lyrical content and cutting-edge rhymes, use the most new words per song.
+```{r, include=F}
+## Estimating how many new words are there for each additional song across the tree genres
+j <- nrow(jazz.tdm) / nrow(filter(dt, genre=="Jazz"))
+r <- nrow(rock.tdm) / nrow(filter(dt, genre=="Rock"))
+h <- nrow(hiphop.tdm) / nrow(filter(dt, genre=="Hip-Hop"))
+```
+
+
+
+```{r, include=F}
+library(wordcloud)
+library(wordcloud2)
+library(RColorBrewer)
+library(lsa)
+library(ggplot2)
+```
+
+## Quality rather than quantity: which 50 words are most frequent in each genre?
+```{r, echo=F}
+wordcloud(jazz.tdm$term, jazz.tdm$count, max.words = 50)
+
+wordcloud(rock.tdm$term, rock.tdm$count, max.words = 50) 
+
+wordcloud(hiphop.tdm$term, hiphop.tdm$count, max.words = 50)
+```
+
+
+## Cosine similarity as a measure of statistical association. 
+
+Cosine similarity measures the angular separation of two data vectors measured from zero and it therefore can be used to evaluate the similarity between two vectors. In this case, it is used to compare Jazz and Rock; Rock and Hip-Hop and finally Jazz and Hip-Hop.
+
+```{r}
+jazz.rock <- rbind(jazz.tdm, rock.tdm)
+jazz.rock.tdm <- jazz.rock %>% cast_dtm(genre, term, count)
+
+jazz.rock.cos <- cosine(t(as.data.frame(as.matrix(jazz.rock.tdm))))
+jazz.rock.cos
+```
+
+```{r}
+rock.hiphop <- rbind(rock.tdm, hiphop.tdm)
+rock.hiphop.tdm <- rock.hiphop %>% cast_dtm(genre, term, count)
+rock.hiphop.cos <- cosine(t(as.data.frame(as.matrix(rock.hiphop.tdm))))
+rock.hiphop.cos
+```
+
+
+```{r}
+jazz.hiphop <- rbind(jazz.tdm, hiphop.tdm)
+jazz.hiphop.tdm <- jazz.hiphop %>% cast_dtm(genre, term, count)
+jazz.hiphop.cos <- cosine(t(as.data.frame(as.matrix(jazz.hiphop.tdm))))
+jazz.hiphop.cos
+```
+
+#SENTIMENT ANALYSIS
+Lastly, let's verify whether the three genres focus on different messages. I will first analyse the words
+```{r, include=F}
+library(sentimentr)
+library(syuzhet)
+library(tibble)
+```
+
+
+```{r}
+jazz.rock.hiphop <- rbind(jazz.tdm, rock.tdm, hiphop.tdm)
+
+
+binary.sent <- get_sentiments("bing") %>% rename(term = word)
+genre.sentiment <- inner_join(jazz.rock.hiphop, binary.sent, by="term") %>%
+  mutate(binary.sent.num = ifelse(sentiment =="positive",1,0))
+
+genre.sentiment.binary <- genre.sentiment %>%
+    group_by(genre) %>%
+    summarise(mean = weighted.mean(binary.sent.num, count, na.rm=T))
+
+genre.sentiment.binary
+```
+
+
+```{r}
+categor.sent <- get_sentiments("nrc") %>%
+  filter(!sentiment %in% c("negative", "positive")) %>%
+  rename(sentiment.type = sentiment, term = word)
+
+j.sent <- inner_join(jazz.tdm, categor.sent) %>%
+  dplyr::select(-term) %>%
+  group_by(sentiment.type) %>%
+  summarise(count = sum(count)) %>%
+  mutate(genre = "jazz",
+         ratio = count/sum(count))
+
+r.sent <- inner_join(rock.tdm, categor.sent) %>%
+  filter(genre=="rock") %>%
+  dplyr::select(-term) %>%
+  group_by(sentiment.type) %>%
+  summarise(count = sum(count)) %>%
+  mutate(genre = "rock",
+         ratio = count/sum(count))
+
+h.sent <- inner_join(hiphop.tdm, categor.sent) %>%
+  filter(genre=="hiphop") %>%
+  dplyr::select(-term) %>%
+  group_by(sentiment.type) %>%
+  summarise(count = sum(count)) %>%
+  mutate(genre = "hiphop",
+         ratio = count/sum(count))
+
+genre.sentiment <- rbind(j.sent, r.sent, h.sent)
+genre.sentiment$genre <- factor(genre.sentiment$genre, levels = c("jazz", "rock", "hiphop"))
+
+ggplot(genre.sentiment, aes(x=sentiment.type, y=ratio)) + 
+  geom_col(aes(fill=genre), position="dodge")
+  
+```
+
+
+
