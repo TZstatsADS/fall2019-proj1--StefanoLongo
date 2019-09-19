@@ -120,14 +120,25 @@ hiphop.tdm <- tidy(TermDocumentMatrix(VCorpus(VectorSource(hiphop.words)))) %>%
 
 ## Starting from the basics: vocabulary range.
 
-Under a musical point of view, newer genres are usually considered "inferior" and less sophisticated. However, HipHop artists, arguably due to the genre's focus on lyrical content and cutting-edge rhymes, use the most new words per song.
-```{r, include=F}
-## Estimating how many new words are there for each additional song across the tree genres
-j <- nrow(jazz.tdm) / nrow(filter(dt, genre=="Jazz"))
-r <- nrow(rock.tdm) / nrow(filter(dt, genre=="Rock"))
-h <- nrow(hiphop.tdm) / nrow(filter(dt, genre=="Hip-Hop"))
-```
+Under a musical point of view, newer genres are usually considered "inferior" and less sophisticated. Lyrics, however, while they do not seem to point to an opposite conclusion, do not completely confirm this 
 
+In fact, rock artists seem to be the ones using the widest vocabulary, followed by jazz artists and then hip-hop ones. 
+```{r, echo=F}
+## Estimating how many new words are there for each additional song across the tree genres
+songs.count <- c(nrow(clean_lyrics[clean_lyrics$genre=="Jazz",]),
+                 nrow(clean_lyrics[clean_lyrics$genre=="Rock",]),
+                 nrow(clean_lyrics[clean_lyrics$genre=="Hip-Hop",]))
+
+word.count <- c(nrow(jazz.tdm), nrow(rock.tdm), nrow(hiphop.tdm))
+
+new.word.count <- round(songs.count/word.count, 2)
+
+word.comparison <- data.frame("Genre" = c("Jazz", "Rock", "Hip-Hop"),
+                              'Number of songs' = songs.count,
+                              "Number of new words per song" = new.word.count)
+
+word.comparison
+```
 
 
 ```{r, include=F}
