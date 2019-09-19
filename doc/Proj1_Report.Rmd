@@ -263,7 +263,7 @@ kable(genre.sentiment.binary) %>%
 Secondly, I conduct a more detailed analysis, categorizing words into 8 different emotions. By calculating how many words of each genre fall into a specific sentiment as a percentage over all the words in that specific genre, it is possible to evaluate whether some sentiments have become prevalent over time. This analysis is highly alligned the previous one. Negative emotions like anger, disgust, fear, and sadness have all upward trends. In contrast, positive ones like anticipation, joy, surprise and trust show downward trends. 
 It might be helpful to notice that the ratios add to 1 across genres, and not across emotions.
 
-```{r, echo=F, message=FALSE, warning=FALSE}
+```{r, echo=F, message=FALSE, warning=FALSE, fig.align='center'}
 #Get the 8 emotion classification and apply it to the term document matrix of each genre
 categor.sent <- get_sentiments("nrc") %>%
   filter(!sentiment %in% c("negative", "positive")) %>%
