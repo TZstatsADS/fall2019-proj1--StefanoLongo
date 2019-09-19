@@ -15,16 +15,24 @@ library(tidytext)
 library(tidyverse)
 library(DT)
 library(dplyr)
+library(knitr)
+library(kableExtra)
 ```
 
 ![](/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/figs/Title1.jpeg)
 
+\newline
+\newline
+\newline
+\newline
 
-As time goes one, each generation condemens the next generation's taste in music. Frequent critiques not only revolve around the musical component of new genres but they also target the kind of values associated with them. For example, as Rock rose to popularity in the 50's, older generations that grew up listening to Jazz, or even Opera, found the new style disgraceful. Few decades later, in the 90's and early 00's, the same people that grew up with Rock started describing Hip-Hop in a similar way. The generation clash is well-known but are the differences across genres as pronounced as they seem? The main point of this report is to try understand if Rock was as far from Jazz as Hip-Hop was from Rock. 
+As time goes on, each generation condemns the next generation's taste in music. Frequent critiques not only revolve around the musical component of new genres but they also target the kind of values associated with them. For example, as Rock rose to popularity in the 50's, older generations that grew up listening to Jazz, or even Opera, found the new style disgraceful. Few decades later, in the 90's and early 00's, the same people that grew up with Rock started describing Hip-Hop in a similar way.
+
+The generation clash is well known, but are the differences across genres as pronounced as they seem? The main point of this report is to try understanding the differences across genres and if Rock was as far from Jazz as Hip-Hop was from Rock. 
 
 
 ```{r, eval=F, echo=F}
-#This is the data cleaning process. The resulting data has been saved in the output folder to avoid running this code each time. 
+#This is the data cleaning process. The resulting data has been saved in the output folder to avoid running this code each time. It is not evaluated in the html file, but it runs just fine. 
 
 
 #Loading data and filtering songs in the Jazz, Rock and Hip-Hope genres as these are the ones this project is focusing on.
@@ -92,7 +100,7 @@ clean_lyrics <- dt %>%
 save(clean_lyrics, file="/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/output/clean_lyrics.RData")
 ```
 
-```{r}
+```{r, echo=F}
 #Load data and create a Document-Term matrix for each genre
 
 load("/Users/stefano/Documents/GitHub/fall2019-proj1--StefanoLongo/output/clean_lyrics.RData")
@@ -118,11 +126,10 @@ hiphop.tdm <- tidy(TermDocumentMatrix(VCorpus(VectorSource(hiphop.words)))) %>%
 ```
 
 
-## Starting from the basics: vocabulary range.
+## Starting from the basics: vocabulary range
 
-Under a musical point of view, newer genres are usually considered "inferior" and less sophisticated. Lyrics, however, while they do not seem to point to an opposite conclusion, do not completely confirm this 
+Under a musical point of view, newer genres are usually considered "inferior" and less sophisticated. Lyrics, however, while they do not seem to point to an opposite conclusion, do not completely confirm this. In fact, rock artists seem to be the ones using the widest vocabulary, followed by jazz artists and then hip-hop ones. However, this trend might at least partially be driven by the higher amount of rock songs in this database.
 
-In fact, rock artists seem to be the ones using the widest vocabulary, followed by jazz artists and then hip-hop ones. 
 ```{r, echo=F}
 ## Estimating how many new words are there for each additional song across the tree genres
 songs.count <- c(nrow(clean_lyrics[clean_lyrics$genre=="Jazz",]),
@@ -133,11 +140,12 @@ word.count <- c(nrow(jazz.tdm), nrow(rock.tdm), nrow(hiphop.tdm))
 
 new.word.count <- round(songs.count/word.count, 2)
 
-word.comparison <- data.frame("Genre" = c("Jazz", "Rock", "Hip-Hop"),
-                              'Number of songs' = songs.count,
-                              "Number of new words per song" = new.word.count)
+word.comparison <- data.frame(c("Jazz", "Rock", "Hip-Hop"),
+                              songs.count,
+                              new.word.count)
 
-word.comparison
+kable(word.comparison, col.names = c("Genre", "Number of songs", "Number of new words per song")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center")
 ```
 
 
@@ -149,69 +157,114 @@ library(lsa)
 library(ggplot2)
 ```
 
-## Quality rather than quantity: which 50 words are most frequent in each genre?
+## Quality rather than quantity: which 75 words are most frequent in each genre?
+
+The word clouds below use size as a visual representation of frequency. They can intuitively express which words are most used and therefore suggest each genre's focus.
+Love truly seems to make the world go round as this word is among most frequent ones across all three genres. More interestingly, however, the preponderance of words like baby and other female epithets in Rock and Hip-Hop songs potentially highlights how these two genres are man dominated. Lastly, the use of coarse words in Hip-Hop is reflect expectations and it is also the reason why I decided to not include as stop words even if the code example suggests otherwise. 
+
+#Jazz
 ```{r, echo=F}
-wordcloud(jazz.tdm$term, jazz.tdm$count, max.words = 50)
+#Creating a word cloud for each genre
+wordcloud(jazz.tdm$term, jazz.tdm$count,
+          max.words = 100,
+          scale=c(3.5, 1),
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(3,"Blues"))
+```
 
-wordcloud(rock.tdm$term, rock.tdm$count, max.words = 50) 
+#Rock
+```{r, echo=F}
+wordcloud(rock.tdm$term, rock.tdm$count,
+          max.words = 100,
+          scale=c(3.5, 1),
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(3,"Reds"))
+```
 
-wordcloud(hiphop.tdm$term, hiphop.tdm$count, max.words = 50)
+#Hip-Hop
+```{r, echo=F}
+wordcloud(hiphop.tdm$term, hiphop.tdm$count,
+          max.words = 100,
+          scale=c(3.5, 1),
+          random.order=FALSE,
+          rot.per=0.3,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(3,"Greens"))
 ```
 
 
-## Cosine similarity as a measure of statistical association. 
+## Cosine similarity as a measure of statistical association
 
 Cosine similarity measures the angular separation of two data vectors measured from zero and it therefore can be used to evaluate the similarity between two vectors. In this case, it is used to compare Jazz and Rock; Rock and Hip-Hop and finally Jazz and Hip-Hop.
 
-```{r}
+Jazz and Rock emerge to be closer to one another than Rock to Hip-Hop. This might somehow justify Rock fans to feel deprecate Hip-Hop even if they were similarly criticised in the 1960's. Lastly, Jazz and Hip-Hop are the furthest apart.
+
+```{r, echo=F}
+#Calculating cosine similarity for all combinations
 jazz.rock <- rbind(jazz.tdm, rock.tdm)
 jazz.rock.tdm <- jazz.rock %>% cast_dtm(genre, term, count)
-
 jazz.rock.cos <- cosine(t(as.data.frame(as.matrix(jazz.rock.tdm))))
-jazz.rock.cos
-```
+jr <- round(jazz.rock.cos[2], 2)
 
-```{r}
 rock.hiphop <- rbind(rock.tdm, hiphop.tdm)
 rock.hiphop.tdm <- rock.hiphop %>% cast_dtm(genre, term, count)
 rock.hiphop.cos <- cosine(t(as.data.frame(as.matrix(rock.hiphop.tdm))))
-rock.hiphop.cos
-```
+rh <- round(rock.hiphop.cos[2],2)
 
-
-```{r}
 jazz.hiphop <- rbind(jazz.tdm, hiphop.tdm)
 jazz.hiphop.tdm <- jazz.hiphop %>% cast_dtm(genre, term, count)
 jazz.hiphop.cos <- cosine(t(as.data.frame(as.matrix(jazz.hiphop.tdm))))
-jazz.hiphop.cos
+jh <- round(jazz.hiphop.cos[2],2)
+
+#Nicely table the results just obtained
+cos.sim <- data.frame("Jazz" = c(1, jr, jh), "Rock" = c("-", 1.00, rh), "Hip-Hop" = c("-","-",1.00))
+row.names(cos.sim) <- c("Jazz", "Rock", "Hip-Hop")
+kable(cos.sim) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center")
 ```
 
-#SENTIMENT ANALYSIS
-Lastly, let's verify whether the three genres focus on different messages. I will first analyse the words
+## Sentiment Analysis
+Lastly, let's verify whether the three genres focus on different emotions. Firstly, I categorise words dichotomously into either "positive" or "negative", thanks to the *sentimentr* package. Assigning a 1 to positive words and a 0 to negative ones, allows me to take and average and estimate where on the spectrum each genre falls. It seems that newer genres have a more negative message than older ones.
+
 ```{r, include=F}
 library(sentimentr)
 library(syuzhet)
 library(tibble)
 ```
 
-
-```{r}
+```{r, echo=F}
+#Create one big Term-Document matrix with all three genres
 jazz.rock.hiphop <- rbind(jazz.tdm, rock.tdm, hiphop.tdm)
 
-
+#Get positive vs negative classification, and recode it into 1 and 0 respectively
 binary.sent <- get_sentiments("bing") %>% rename(term = word)
 genre.sentiment <- inner_join(jazz.rock.hiphop, binary.sent, by="term") %>%
   mutate(binary.sent.num = ifelse(sentiment =="positive",1,0))
 
 genre.sentiment.binary <- genre.sentiment %>%
-    group_by(genre) %>%
-    summarise(mean = weighted.mean(binary.sent.num, count, na.rm=T))
+  group_by(genre) %>%
+  summarise("Sentiment Mean" = round(weighted.mean(binary.sent.num, count, na.rm=T),2)) %>%
+  rename(Genre = genre) %>%
+  mutate(Genre = factor(Genre, levels = c("jazz", "rock", "hiphop"))) %>%
+  arrange(Genre)
 
-genre.sentiment.binary
+#Include all the results in a table
+kable(genre.sentiment.binary) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center") 
 ```
 
+Secondly, I conduct a more detailed analysis, categorizing words into 8 different emotions. By calculating how many words of each genre fall into a specific sentiment as a percentage over all the words in that specific genre, it is possible to evaluate whether some sentiments have become prevalent over time. This analysis is highly alligned the previous one. Negative emotions like anger, disgust, fear, and sadness have all upward trends. In contrast, positive ones like anticipation, joy, surprise and trust show downward trends. 
+It might be helpful to notice that the ratios add to 1 across genres, and not across emotions.
 
-```{r}
+```{r, echo=F, message=FALSE, warning=FALSE}
+#Get the 8 emotion classification and apply it to the term document matrix of each genre
 categor.sent <- get_sentiments("nrc") %>%
   filter(!sentiment %in% c("negative", "positive")) %>%
   rename(sentiment.type = sentiment, term = word)
@@ -242,10 +295,18 @@ h.sent <- inner_join(hiphop.tdm, categor.sent) %>%
 genre.sentiment <- rbind(j.sent, r.sent, h.sent)
 genre.sentiment$genre <- factor(genre.sentiment$genre, levels = c("jazz", "rock", "hiphop"))
 
+
+#Plotting the results
 ggplot(genre.sentiment, aes(x=sentiment.type, y=ratio)) + 
-  geom_col(aes(fill=genre), position="dodge")
+  geom_col(aes(fill=genre), position="dodge") + 
+  ggtitle("Distribution of emotions across genres") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Ratio over the genre") +
+  xlab("Emotion type")
   
 ```
 
 
+## Summary
 
+In conclusion, the generational clashes in the music word seem mostly supported by the data. The few similarities between the genres of Jazz, Rock and Hip-Hop are limited to the fact that they all tend to use relatively similar amounts of words, and focus somewhat extensively on love themes. However, all other indices used in this report point more towards differences than resemblance. Cosine similarity shows a rather low statistical association between the genres and the sentiment analysis demonstrates how newer genres have increasing amounts of words with negative associations.
